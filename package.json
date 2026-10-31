@@ -1,0 +1,14 @@
+{
+  "name": "ev-blockchain-project",
+  "version": "1.0.0",
+  "description": "Blockchain-Based EV Charging Cooperation Model prototype",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "demo": "node demo.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "elliptic": "^6.6.1"
+  }
+}

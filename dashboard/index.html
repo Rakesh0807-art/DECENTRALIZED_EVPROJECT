@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>EVChargeChain | Research Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{--bg:#08111f;--panel:#0f1b2d;--panel2:#13233a;--line:#223552;--text:#e7eef9;--muted:#91a4bf;--cyan:#22d3ee;--blue:#4f8cff;--green:#34d399;--orange:#f59e0b;--red:#fb7185;--shadow:0 12px 35px rgba(0,0,0,.25)}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#07101d,#0b1729 50%,#08111f);color:var(--text);font-family:Inter,system-ui,Arial,sans-serif}
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100vh}.sidebar{border-right:1px solid var(--line);padding:22px 16px;position:sticky;top:0;height:100vh;background:rgba(8,17,31,.92)}
+.logo{font-size:20px;font-weight:800;margin-bottom:30px}.logo span{color:var(--cyan)}
+.nav{display:grid;gap:7px}.nav a{padding:12px;border-radius:10px;color:var(--muted);text-decoration:none}.nav a:hover,.nav a.active{background:#13243b;color:#fff}
+.side-note{position:absolute;bottom:20px;left:16px;right:16px;color:var(--muted);font-size:11px;line-height:1.5}
+.main{padding:24px 28px}.top{display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:20px}.title h1{margin:0;font-size:28px}.title p{margin:6px 0;color:var(--muted)}.live{border:1px solid #185d57;background:#0d2b2b;color:#8ff3d2;border-radius:999px;padding:9px 13px;font-size:12px}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}.kpi{background:linear-gradient(145deg,var(--panel),#0d192a);border:1px solid var(--line);border-radius:14px;padding:15px;box-shadow:var(--shadow)}.kpi .label{color:var(--muted);font-size:11px}.kpi .value{font-size:24px;font-weight:800;margin-top:7px}
+.panel{background:rgba(15,27,45,.9);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow);margin-top:16px}.panel h2{margin:0 0 6px;font-size:17px}.sub{color:var(--muted);font-size:12px;margin-bottom:13px}
+.grid{display:grid;grid-template-columns:1.45fr 1fr;gap:16px}.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}.map-wrap{height:490px;border-radius:13px;overflow:hidden;border:1px solid var(--line)}#map{height:100%}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field label{display:block;color:var(--muted);font-size:11px;margin-bottom:5px}.field input,.field select{width:100%;padding:10px;border-radius:9px;border:1px solid var(--line);background:#0a1525;color:#fff;outline:none}.field input:focus,.field select:focus{border-color:var(--cyan)}
+button{border:0;border-radius:9px;padding:10px 12px;font-weight:750;cursor:pointer;margin-top:10px;color:#06111f}.btn-cyan{background:var(--cyan)}.btn-blue{background:var(--blue);color:white}.btn-green{background:var(--green)}.btn-orange{background:var(--orange)}.btn-red{background:var(--red)}.btn-dark{background:#263955;color:#fff}
+.flow{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:12px}.flow-step{background:#0b1829;border:1px solid var(--line);border-radius:10px;padding:10px 6px;text-align:center;font-size:10px;color:var(--muted)}.flow-step.active{border-color:var(--cyan);color:#fff;background:#0d2734}.arrow{color:var(--cyan);font-size:18px}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:9px 7px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--muted);font-weight:600}.pill{border-radius:999px;padding:4px 8px;font-size:10px}.good{background:#0b3027;color:#71f0c3}.warn{background:#3a2b08;color:#fbd56a}.bad{background:#3c1420;color:#ff9aaa}
+.hash{font:10px ui-monospace,monospace;word-break:break-all;color:#7f93ae}.block{background:#0a1525;border:1px solid var(--line);border-radius:10px;padding:11px;margin:8px 0}.activity{max-height:250px;overflow:auto}.event{padding:9px;border-bottom:1px solid var(--line);font-size:11px}.event b{color:var(--cyan)}.result{background:#0a1525;border:1px solid var(--line);border-radius:11px;padding:12px;margin-top:10px;line-height:1.6;font-size:12px}
+canvas{max-height:300px}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#0f1b2d;color:#fff}.leaflet-popup-content{font-size:12px}
+.marker-ev{font-size:22px}.marker-mcs{font-size:22px}
+@media(max-width:1200px){.kpis{grid-template-columns:repeat(3,1fr)}.grid3{grid-template-columns:1fr 1fr}.app{grid-template-columns:200px 1fr}}
+@media(max-width:850px){.app{display:block}.sidebar{display:none}.main{padding:16px}.grid,.grid3{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.flow{grid-template-columns:repeat(4,1fr)}}
+
+.points-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.point-card{background:#0a1525;border:1px solid var(--line);border-radius:11px;padding:12px}.point-card .score{font-size:25px;font-weight:800;color:var(--cyan)}.route-card{background:linear-gradient(145deg,#0a1e2c,#0b1626);border:1px solid #17485a;border-radius:12px;padding:13px}.route-stat{display:inline-block;margin:5px 5px 0 0;padding:7px 9px;border-radius:8px;background:#10263a;font-size:11px}.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}.legend span{display:inline-flex;gap:5px;align-items:center}.dot{width:9px;height:9px;border-radius:50%;display:inline-block}.route-step{padding:8px;border-bottom:1px solid var(--line);font-size:11px}.pulse{animation:pulse 1.4s infinite}@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.12)}100%{transform:scale(1)}}
+.sim-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:end}.small-field{width:130px}.small-field label{display:block;color:var(--muted);font-size:10px;margin-bottom:4px}.small-field input,.small-field select{width:100%;padding:9px;border-radius:8px;border:1px solid var(--line);background:#0a1525;color:#fff}
+.map-overlay{position:absolute;z-index:500;right:12px;top:12px;background:rgba(10,21,37,.92);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:11px;line-height:1.7;box-shadow:var(--shadow)}
+#simMapWrap{position:relative}.sim-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}.sim-metric{background:#0a1525;border:1px solid var(--line);border-radius:9px;padding:10px}.sim-metric b{display:block;font-size:20px;color:var(--cyan)}
+.attack-grid{display:grid;grid-template-columns:1fr 1.2fr;gap:15px}.attack-btn{display:block;width:100%;text-align:left;background:#0a1525;color:#fff;border:1px solid var(--line);margin:5px 0}.attack-btn:hover{border-color:var(--red);background:#1a1420}
+.experiment-controls{display:flex;flex-wrap:wrap;gap:9px;align-items:end}.experiment-controls .field{width:130px}.experiment-result{margin-top:12px;max-height:180px;overflow:auto}
+.badge-big{display:inline-block;padding:7px 10px;border-radius:999px;background:#0b3027;color:#71f0c3;font-size:11px}
+@media(max-width:850px){.sim-metrics{grid-template-columns:repeat(2,1fr)}.attack-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="logo">⚡ EV<span>ChargeChain</span></div>
+  <div class="nav">
+    <a href="#overview" class="active">Overview</a>
+    <a href="#planner">EV & Charging Planner</a>
+    <a href="#map-section">Live Map</a>
+    <a href="#blockchain">Blockchain Explorer</a>
+    <a href="#security">Trust & Security</a>
+    <a href="#research">Research Analytics</a>
+  </div>
+  <div class="side-note">Final-year research prototype<br>Blockchain + EV charging cooperation<br><br>Map: OpenStreetMap data<br>Availability: simulated unless stated</div>
+</aside>
+
+<main class="main">
+<section id="overview">
+  <div class="top">
+    <div class="title"><h1>EV Charging Cooperation Command Center</h1><p>Secure charging information sharing, MCS dispatch, trust and contribution-aware rewards.</p></div>
+    <div class="live">● SYSTEM ONLINE</div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="label">Traffic Blocks</div><div id="kTraffic" class="value">0</div></div>
+    <div class="kpi"><div class="label">Cooperation Blocks</div><div id="kCoop" class="value">0</div></div>
+    <div class="kpi"><div class="label">Active Verifiers</div><div id="kVerifier" class="value">0</div></div>
+    <div class="kpi"><div class="label">MCS Fleet</div><div id="kMCS" class="value">2</div></div>
+    <div class="kpi"><div class="label">Chain Integrity</div><div id="kValid" class="value">—</div></div>
+    <div class="kpi"><div class="label">Reward Pool</div><div class="value">₹1,000</div></div>
+  </div>
+
+  <div class="panel">
+    <h2>End-to-End Cooperation Pipeline</h2><div class="sub">The complete project story is visible here and can be demonstrated step-by-step.</div>
+    <div class="flow">
+      <div class="flow-step" id="f1">⚡ EV Request</div><div class="flow-step" id="f2">✍ Signed TX</div><div class="flow-step" id="f3">👥 Verifiers</div><div class="flow-step" id="f4">⅔ Consensus</div><div class="flow-step" id="f5">🔗 Block</div><div class="flow-step" id="f6">🚐 MCS</div><div class="flow-step" id="f7">🤝 Contribution</div><div class="flow-step" id="f8">💰 Reward</div>
+    </div>
+  </div>
+</section>
+
+<section id="planner" class="grid">
+<div class="panel">
+  <h2>EV Charging Request</h2><div class="sub">Now the system accepts real user input instead of always running the same demo values.</div>
+  <div class="form-grid">
+    <div class="field"><label>EV Battery (%)</label><input id="battery" type="number" value="22" min="1" max="100"></div>
+    <div class="field"><label>Required Energy (kWh)</label><input id="energy" type="number" value="28" min="1" max="100"></div>
+    <div class="field"><label>EV Latitude</label><input id="lat" type="number" step="0.0001" value="12.9716"></div>
+    <div class="field"><label>EV Longitude</label><input id="lon" type="number" step="0.0001" value="77.5946"></div>
+    <div class="field"><label>Charger Type</label><select id="charger"><option>DC Fast</option><option>AC Type 2</option><option>CCS2</option></select></div>
+    <div class="field"><label>Available Slots at Request</label><input id="slots" type="number" value="2" min="0" max="20"></div>
+  </div>
+  <button class="btn-cyan" onclick="configureEV()">Save EV Request</button>
+  <button class="btn-blue" onclick="loadStations()">Load Mapped Charging Stations</button>
+  <button class="btn-green" onclick="runPlan()">Plan Charging</button>
+  <button class="btn-cyan" onclick="showRoute()">Show Road Route</button>
+  <div id="planResult" class="result">Enter the EV details, load stations, select a marker, then plan charging.</div>
+  <div id="routeResult" class="route-card" style="margin-top:10px">Road route will appear here after you click <b>Show Road Route</b>.</div>
+</div>
+
+<div class="panel">
+  <h2>Recommended Action</h2><div class="sub">Decision support for the EV.</div>
+  <div id="decision" class="result">Waiting for a charging request.</div>
+  <h2 style="margin-top:18px">Selected Station</h2>
+  <div id="selectedStation" class="result">No station selected.</div>
+</div>
+</section>
+
+<section id="map-section" class="panel">
+  <h2>🗺️ Live Charging Network Map</h2>
+  <div class="sub">Click a charging station marker to select it. Click "Load Mapped Charging Stations" to query OpenStreetMap through the server. Mapped availability is not assumed to be real-time.</div>
+  <div class="map-wrap"><div id="map"></div></div>
+</section>
+
+<section class="grid">
+<div class="panel">
+  <h2>🚐 MCS Fleet Tracking</h2><div class="sub">Mobile charging units available for emergency/cooperative support.</div>
+  <table id="mcsTable"></table>
+  <button class="btn-orange" onclick="dispatchMCS()">Dispatch Best MCS</button>
+  <div id="mcsResult" class="result">No MCS dispatch yet.</div>
+</div>
+<div class="panel">
+  <h2>🔐 Secure Charging Transaction</h2><div class="sub">Creates a signed TX and runs verifier consensus.</div>
+  <button class="btn-blue" onclick="verifyTransaction()">Create + Verify + Commit Transaction</button>
+  <div id="txResult" class="result">No transaction submitted.</div>
+  <h2 style="margin-top:18px">Verifier Votes</h2><div id="voteSummary" class="result">Waiting.</div>
+</div>
+</section>
+
+
+<section id="simulation" class="panel">
+  <h2>🚦 Multi-EV / MCS Simulation Lab</h2>
+  <div class="sub">Generate many EV requests, congest charging stations, assign multiple MCS vehicles and observe the cooperation process on a simulation map.</div>
+  <div class="sim-toolbar">
+    <div class="small-field"><label>EVs</label><input id="simEVs" type="number" value="25" min="5" max="100"></div>
+    <div class="small-field"><label>Stations</label><input id="simStations" type="number" value="5" min="3" max="10"></div>
+    <div class="small-field"><label>MCS Fleet</label><input id="simMCS" type="number" value="4" min="1" max="10"></div>
+    <button class="btn-cyan" onclick="startSimulation()">▶ Start Simulation</button>
+    <button class="btn-orange" onclick="simulationTick()">⏩ Next Simulation Step</button>
+    <button class="btn-red" onclick="stopSimulation()">■ Stop</button>
+  </div>
+  <div id="simMapWrap" class="map-wrap" style="margin-top:12px"><div id="simMap" style="height:100%"></div><div class="map-overlay">🔵 EV requesting<br>🟢 EV served<br>🚐 MCS<br>🔌 Charging station</div></div>
+  <div class="sim-metrics">
+    <div class="sim-metric"><span>Simulation Tick</span><b id="simTick">0</b></div>
+    <div class="sim-metric"><span>EVs Served</span><b id="simServed">0</b></div>
+    <div class="sim-metric"><span>Avg Wait</span><b id="simWait">0 min</b></div>
+    <div class="sim-metric"><span>Active MCS</span><b id="simActiveMCS">0</b></div>
+  </div>
+</section>
+
+<section id="security" class="grid">
+<div class="panel">
+  <h2>🛡️ Trust & Security</h2><div class="sub">Simulate a dishonest verifier and observe trust decay/exclusion.</div>
+  <button class="btn-red" onclick="malicious()">Simulate Malicious Round</button>
+  <table id="verifierTable" style="margin-top:12px"></table>
+</div>
+<div class="panel">
+  <h2>📈 Trust Score Analytics</h2><canvas id="trustChart"></canvas>
+</div>
+</section>
+
+<section id="blockchain" class="grid">
+<div class="panel">
+  <h2>🔗 Traffic Blockchain Explorer</h2>
+  <div id="trafficBlocks"></div>
+</div>
+<div class="panel">
+  <h2>🤝 Cooperation Blockchain</h2>
+  <div id="coopBlocks"></div>
+</div>
+</section>
+
+<section class="grid3">
+<div class="panel">
+  <h2>🤝 Contributions</h2><table id="contributionTable"></table>
+</div>
+<div class="panel">
+  <h2>💰 Reward Distribution</h2><table id="rewardTable"></table>
+</div>
+<div class="panel">
+  <h2>📡 System Activity</h2><div id="activity" class="activity"></div>
+</div>
+</section>
+
+
+<section class="grid">
+<div class="panel">
+  <h2>🏆 Cooperation Points & Station Leaderboard</h2>
+  <div class="sub">Stations earn points for useful cooperation actions. Points are separate from the blockchain contribution score and make the incentive mechanism easy to demonstrate.</div>
+  <div id="pointsBoard" class="points-grid"></div>
+</div>
+<div class="panel">
+  <h2>📜 Recent Cooperation Awards</h2>
+  <div id="pointsHistory" class="activity"></div>
+</div>
+</section>
+
+
+<section id="attacklab" class="panel">
+  <h2>🧪 Security Attack Lab</h2>
+  <div class="sub">Controlled prototype scenarios show how the model responds to common attack types. These are simulations, not real attacks.</div>
+  <div class="attack-grid">
+    <div>
+      <button class="attack-btn attack-btn" onclick="runAttack('tampering')">🔴 Transaction Tampering</button>
+      <button class="attack-btn" onclick="runAttack('falseData')">🟠 False Charging Information</button>
+      <button class="attack-btn" onclick="runAttack('impersonation')">🟣 Fake Identity / Impersonation</button>
+      <button class="attack-btn" onclick="runAttack('maliciousVerifier')">🔵 Malicious Verifier</button>
+      <button class="attack-btn" onclick="runAttack('disruption')">🟡 Verification Disruption</button>
+      <button class="attack-btn" onclick="runAttack('collusion')">⚫ Verifier Collusion</button>
+    </div>
+    <div>
+      <div id="attackResult" class="result"><span class="badge-big">SECURITY LAB READY</span><br>Select an attack scenario to demonstrate the corresponding detection/response.</div>
+      <table id="attackTable" style="margin-top:12px"></table>
+    </div>
+  </div>
+</section>
+
+<section id="research" class="grid">
+<div class="panel">
+  <h2>📊 Research Experiment Lab</h2>
+  <div class="sub">Run repeatable prototype experiments and compare waiting time, success rate and throughput as MCS capacity changes.</div>
+  <div class="experiment-controls">
+    <div class="field"><label>EV requests</label><input id="expEVs" type="number" value="500" min="50" max="2000"></div>
+    <div class="field"><label>Runs</label><input id="expRuns" type="number" value="20" min="5" max="100"></div>
+    <div class="field"><label>Max MCS</label><input id="expMaxMCS" type="number" value="12" min="2" max="20"></div>
+    <button class="btn-cyan" onclick="runExperiment()">Run Experiment</button>
+  </div>
+  <div id="experimentResult" class="experiment-result"></div>
+  <canvas id="waitChart"></canvas>
+  <button class="btn-cyan" onclick="runResearch()">Run Research Experiment</button>
+</div>
+<div class="panel">
+  <h2>🧪 Security Experiment</h2>
+  <div class="sub">Illustrative trust-decay experiment aligned with the simplified prototype model.</div>
+  <canvas id="researchTrust"></canvas>
+  <div class="result"></div>
+</div>
+</section>
+</main>
+</div>
+
+<script>
+let map, evMarker, selectedMarker=null, selectedStation=null, stationLayer, mcsMarkers={}, trustChart,waitChart,researchTrust;
+let stationData=[];
+
+
+let simMap, simLayer, simMarkers={}, simInterval=null, simData=null, experimentData=null;
+
+function initSimMap(){
+  simMap=L.map("simMap").setView([12.9716,77.5946],12);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(simMap);
+  simLayer=L.layerGroup().addTo(simMap);
+}
+function simIcon(emoji,cls=""){return L.divIcon({html:`<div class="${cls}" style="font-size:20px">${emoji}</div>`,className:"",iconSize:[24,24],iconAnchor:[12,12]})}
+function renderSimulation(s){
+  if(!simMap)return;
+  simLayer.clearLayers();simMarkers={};
+  const all=[];
+  (s.simulation?.stations||[]).forEach(st=>{
+    const m=L.marker([st.lat,st.lon],{icon:simIcon("🔌")}).addTo(simLayer).bindPopup(`<b>${esc(st.name)}</b><br>Slots: ${st.occupied}/${st.capacity}<br>Queue: ${st.queue}<br>Energy: ${st.energy}%`);
+    all.push([st.lat,st.lon]);
+  });
+  (s.simulation?.evs||[]).forEach(e=>{
+    const emoji=e.status==="served"?"🟢":"🔵";
+    const m=L.marker([e.lat,e.lon],{icon:simIcon(emoji)}).addTo(simLayer).bindPopup(`<b>${e.id}</b><br>Status: ${e.status}<br>Energy: ${e.energy} kWh`);
+    all.push([e.lat,e.lon]);
+  });
+  (s.simulation?.mcsFleet||[]).forEach(mcs=>{
+    const m=L.marker([mcs.lat,mcs.lon],{icon:simIcon("🚐","pulse")}).addTo(simLayer).bindPopup(`<b>${mcs.name}</b><br>Status: ${mcs.status}<br>Energy: ${mcs.energy} kWh<br>Cost: ₹${mcs.cost}/kWh`);
+    all.push([mcs.lat,mcs.lon]);
+  });
+  if(all.length)simMap.fitBounds(L.latLngBounds(all),{padding:[25,25]});
+  const sim=s.simulation||{};
+  document.getElementById("simTick").textContent=sim.tick||0;
+  document.getElementById("simServed").textContent=sim.metrics?.served||0;
+  const n=sim.evs?.length||1, avg=(sim.metrics?.totalWait||0)/Math.max(1,sim.metrics?.served||1);
+  document.getElementById("simWait").textContent=avg.toFixed(1)+" min";
+  document.getElementById("simActiveMCS").textContent=(sim.mcsFleet||[]).filter(x=>x.status!=="idle").length;
+}
+async function startSimulation(){
+  const s=await api("/api/simulation/start",{method:"POST",body:JSON.stringify({
+    evs:Number(document.getElementById("simEVs").value),
+    stations:Number(document.getElementById("simStations").value),
+    mcs:Number(document.getElementById("simMCS").value)
+  })});
+  renderSimulation(s);
+  clearInterval(simInterval);
+  simInterval=setInterval(async()=>{if(!s.simulation.running)return;const x=await api("/api/simulation/tick",{method:"POST"});renderSimulation(x);loadState();},1000);
+  loadState();
+}
+async function simulationTick(){const s=await api("/api/simulation/tick",{method:"POST"});renderSimulation(s);loadState()}
+async function stopSimulation(){clearInterval(simInterval);const s=await api("/api/simulation/stop",{method:"POST"});renderSimulation(s);loadState()}
+
+async function runAttack(type){
+  const s=await api("/api/attack",{method:"POST",body:JSON.stringify({type})});
+  const a=s.attackHistory?.[0];
+  document.getElementById("attackResult").innerHTML=`<span class="badge-big">ATTACK SIMULATED</span><br><b>${esc(a.name)}</b><br>${esc(a.action)}<br><br><b>Response:</b> ${esc(a.response)}`;
+  document.getElementById("attackTable").innerHTML="<tr><th>Scenario</th><th>Detected</th><th>Response</th></tr>"+s.attackHistory.slice(0,8).map(x=>`<tr><td>${esc(x.name)}</td><td>${x.detected?"✓":"—"}</td><td>${esc(x.response)}</td></tr>`).join("");
+  loadState();
+}
+
+async function runExperiment(){
+  const s=await api("/api/research/run",{method:"POST",body:JSON.stringify({
+    evs:Number(document.getElementById("expEVs").value),
+    runs:Number(document.getElementById("expRuns").value),
+    maxMCS:Number(document.getElementById("expMaxMCS").value)
+  })});
+  experimentData=s.experimentResults;
+  const rows=experimentData.rows;
+  if(waitChart)waitChart.destroy();
+  waitChart=new Chart(document.getElementById("waitChart"),{type:"line",data:{labels:rows.map(x=>x.mcs),datasets:[{label:"Average wait (min)",data:rows.map(x=>x.avgWait),tension:.3}]},options:{responsive:true,scales:{y:{beginAtZero:true},x:{title:{display:true,text:"MCS count"}}}}});
+  document.getElementById("experimentResult").innerHTML=`<b>Experiment complete.</b> ${experimentData.evCount} EV requests × ${experimentData.runs} runs.<br>Rows: ${rows.length}`;
+  document.getElementById("dataPreview").innerHTML=rows.slice(0,8).map(x=>`MCS ${x.mcs}: wait ${x.avgWait} min • success ${x.successRate}% • throughput ${x.throughput}`).join("<br>");
+  loadState();
+}
+function downloadExperiment(){
+  if(!experimentData){alert("Run an experiment first.");return}
+  const lines=["mcs,avg_wait_minutes,success_rate_percent,throughput"];
+  experimentData.rows.forEach(x=>lines.push(`${x.mcs},${x.avgWait},${x.successRate},${x.throughput}`));
+  const blob=new Blob([lines.join("\\n")],{type:"text/csv"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="evchargechain_experiment.csv";a.click();URL.revokeObjectURL(a.href);
+}
+function initMap(){
+  map=L.map("map").setView([12.9716,77.5946],12);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(map);
+  evMarker=L.marker([12.9716,77.5946]).addTo(map).bindPopup("⚡ EV-1<br>Charging request location").openPopup();
+}
+function api(url,opt={}){return fetch(url,{headers:{"Content-Type":"application/json"},...opt}).then(r=>r.json())}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function setFlow(n){for(let i=1;i<=8;i++)document.getElementById("f"+i).classList.toggle("active",i<=n)}
+function logEvent(s){console.log(s)}
+
+async function configureEV(){
+ const lat=Number(document.getElementById("lat").value),lon=Number(document.getElementById("lon").value);
+ await api("/api/ev-config",{method:"POST",body:JSON.stringify({lat,lon,battery:Number(document.getElementById("battery").value),energy:Number(document.getElementById("energy").value)})});
+ evMarker.setLatLng([lat,lon]);map.setView([lat,lon],13);setFlow(1);
+ document.getElementById("planResult").innerHTML="<b>EV request saved.</b> The EV location, battery level and required energy are now part of the decision process.";
+ loadState();
+}
+async function loadStations(){
+ const r=await api("/api/real-stations");stationData=r.stations||[];
+ if(stationLayer)stationLayer.clearLayers();else stationLayer=L.layerGroup().addTo(map);
+ stationData.forEach(s=>{
+   const m=L.marker([s.lat,s.lon]).addTo(stationLayer);
+   m.bindPopup(`<b>🔌 ${esc(s.name)}</b><br>Brand: ${esc(s.brand||"—")}<br>Operator: ${esc(s.operator||"—")}<br>Capacity: ${s.capacity||"—"}<br><button onclick="selectStation('${String(s.id).replace(/'/g,"")}')">Select this station</button>`);
+   s._marker=m;
+ });
+ if(stationData.length){map.fitBounds(L.latLngBounds(stationData.map(s=>[s.lat,s.lon])),{padding:[25,25]});}
+ document.getElementById("planResult").innerHTML=`<b>${r.source}</b>: loaded ${stationData.length} mapped charging locations.`;
+ loadState();
+}
+window.selectStation=function(id){
+ selectedStation=stationData.find(s=>String(s.id)===String(id));
+ if(!selectedStation)return;
+ selectedMarker=selectedStation._marker;
+ selectedMarker.openPopup();
+ document.getElementById("selectedStation").innerHTML=`<b>${esc(selectedStation.name)}</b><br>${esc(selectedStation.brand||selectedStation.operator||"Charging station")}<br>Capacity: ${selectedStation.capacity||"Not mapped"}`;
+}
+async function runPlan(){
+ if(!selectedStation){document.getElementById("planResult").innerHTML="<b>Please select a charging station marker first.</b>";return}
+ const response=await api("/api/plan-charge",{method:"POST",body:JSON.stringify({stationId:selectedStation.id})});
+ const p=response.lastPlan;
+ document.getElementById("planResult").innerHTML=`<b>Route plan ready.</b><br>Station: ${esc(p.station.name)}<br>Distance: ${p.distanceKm} km<br>Estimated wait: ${p.estimatedWaitMin} min<br>Recommendation: <b>${esc(p.recommendation)}</b>`;
+ document.getElementById("decision").innerHTML=p.directAvailable?`<span class="pill good">DIRECT CHARGING</span><br>Proceed to the selected station.`:`<span class="pill warn">COOPERATION REQUIRED</span><br>Station appears busy in the simulation. Dispatch an MCS.`;
+ setFlow(2);loadState();
+ // Automatically draw the route after planning. The separate route button remains available.
+ await showRoute();
+}
+async function dispatchMCS(){
+ const s=await api("/api/mcs-match",{method:"POST",body:JSON.stringify({maxDistance:20,maxCost:500})});
+ const m=s.lastMCSMatch;
+ if(m&&m.matched){
+  document.getElementById("mcsResult").innerHTML=`<b>MCS dispatched ✓</b><br>${esc(m.mcsName)}<br>Distance: ${m.distance} km<br>Estimated cost: ₹${m.totalCost}`;
+  setFlow(6);
+ }else document.getElementById("mcsResult").innerHTML="<b>No suitable MCS found.</b> Increase the allowed distance/cost or change EV energy.";
+ loadState();
+ if(m&&m.matched && lastRouteForAnimation) animateMCS();
+}
+async function verifyTransaction(){
+ const s=await api("/api/simulate-transaction",{method:"POST",body:JSON.stringify({chargingAmount:Number(document.getElementById("energy").value),chargingTime:55,chargerType:document.getElementById("charger").value,availableSlots:Number(document.getElementById("slots").value)})});
+ const v=s.lastVerification;
+ document.getElementById("txResult").innerHTML=`<b>Transaction created and signed ✓</b><br>TX verifier: ${esc(s.verifiers[0].name)}<br>Votes: ${v.votes}/${v.required}<br>Commit: <b>${v.committed?"YES — block added ✓":"NO — rejected"}</b>`;
+ document.getElementById("voteSummary").innerHTML=`${v.votes} verifier approvals received. Required threshold: ${v.required}.`;
+ setFlow(v.committed?5:3);loadState();
+}
+async function malicious(){
+ const s=await api("/api/simulate-malicious",{method:"POST"});
+ const v=s.verifiers[0];
+ document.getElementById("decision").innerHTML=`<span class="pill ${v.active?"warn":"bad"}">TRUST UPDATE</span><br>${esc(v.name)} trust = <b>${v.trustScore}</b> — ${v.active?"still active":"excluded from verifier group"}`;
+ loadState();
+}
+
+async function runResearch() {
+  const r = await api("/api/research-metrics");
+
+  // Research Experiment: Waiting Time
+  const labels = r.waitingTime.map(x => x.mcs);
+  const data = r.waitingTime.map(x => x.averageWaitMinutes);
+
+  if (waitChart) waitChart.destroy();
+
+  waitChart = new Chart(document.getElementById("waitChart"), {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Average wait (min)",
+        data: data,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: "Number of Mobile Charging Stations (MCS)"
+          }
+        },
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: "Average Waiting Time (Minutes)"
+          }
+        }
+      }
+    }
+  });
+
+  // Security Experiment: Trust Decay
+  const labels2 = r.trustDecay.map(x => "Round " + x.round);
+  const data2 = r.trustDecay.map(x => x.trust);
+
+  if (researchTrust) researchTrust.destroy();
+
+  researchTrust = new Chart(
+    document.getElementById("researchTrust"),
+    {
+      type: "line",
+      data: {
+        labels: labels2,
+        datasets: [{
+          label: "Malicious verifier trust",
+          data: data2,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: "Experiment Round"
+            }
+          },
+          y: {
+            min: 0,
+            max: 1,
+            title: {
+              display: true,
+              text: "Trust Score"
+            }
+          }
+        }
+      }
+    }
+  );
+}
+
+let routeLine=null, routeVehicle=null, routeAnimationTimer=null, lastRouteForAnimation=null;
+
+function drawRoute(route){
+  if(routeLine) map.removeLayer(routeLine);
+  const coords=(route.geometry?.coordinates||[]).map(c=>[Number(c[1]),Number(c[0])]).filter(c=>Number.isFinite(c[0])&&Number.isFinite(c[1]));
+  if(coords.length<2) throw new Error("Route has no usable coordinates");
+  routeLine=L.polyline(coords,{weight:7,opacity:.95}).addTo(map);
+  map.fitBounds(routeLine.getBounds(),{padding:[30,30]});
+  return coords;
+}
+
+async function showRoute(){
+ if(!selectedStation){
+  document.getElementById("routeResult").innerHTML="<b>Select a charging station on the map first.</b>";
+  return;
+ }
+ const box=document.getElementById("routeResult");
+ box.innerHTML="<b>🛣️ Calculating road route...</b>";
+ try{
+  const response=await api("/api/route-to-station",{method:"POST",body:JSON.stringify({stationId:selectedStation.id,station:selectedStation})});
+  const r=response.lastRoute;
+  const coords=drawRoute(r);
+  lastRouteForAnimation={...r,coords};
+  box.innerHTML=`<b>🛣️ Route ready</b><br>`+
+    `<span class="route-stat">Source: ${esc(r.source||"Prototype")}</span>`+
+    `<span class="route-stat">Distance: ${r.distanceKm??"simulated"} km</span>`+
+    `<span class="route-stat">ETA: ${r.durationMin??"simulated"} min</span>`+
+    `<br><button class="btn-orange" id="routeMcsBtn" onclick="animateMCS()">▶ Simulate MCS on Map</button>`+
+    `<div style="margin-top:8px;max-height:120px;overflow:auto">${(r.steps||[]).slice(0,8).map((x,i)=>`<div class="route-step">${i+1}. ${esc(x.instruction)} ${x.distanceKm!=null?`(${x.distanceKm} km)`:""}</div>`).join("")}</div>`;
+  loadState();
+ }catch(err){
+  const a=[Number(document.getElementById("lat").value)||12.9716,Number(document.getElementById("lon").value)||77.5946];
+  const b=[Number(selectedStation.lat),Number(selectedStation.lon)];
+  const coords=[];
+  for(let i=0;i<=30;i++){const t=i/30;coords.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]);}
+  const fallback={source:"Prototype fallback",stationId:String(selectedStation.id),stationName:selectedStation.name,distanceKm:null,durationMin:null,geometry:{type:"LineString",coordinates:coords.map(c=>[c[1],c[0]])},steps:[{instruction:"Simulated route from EV to selected charging station."}]};
+  const mapCoords=drawRoute(fallback);
+  lastRouteForAnimation={...fallback,coords:mapCoords};
+  box.innerHTML=`<b>🛣️ Demo route displayed</b><br><span class="route-stat">Source: Prototype fallback</span><br><small>Road routing was unavailable, so a clearly labelled simulated route is shown.</small><br><button class="btn-orange" onclick="animateMCS()">▶ Simulate MCS on Map</button>`;
+ }
+}
+
+function animateMCS(){
+  // Use the route already drawn on the map. If loadState ran in between, recover it from the API.
+  if(lastRouteForAnimation?.coords?.length>=2){
+    startMCSAnimation(lastRouteForAnimation.coords);
+    return;
+  }
+  api("/api/state").then(s=>{
+    if(s.lastRoute){
+      const coords=drawRoute(s.lastRoute);
+      lastRouteForAnimation={...s.lastRoute,coords};
+      startMCSAnimation(coords);
+    }else{
+      document.getElementById("mcsResult").innerHTML="<b>⚠️ No route available.</b><br>Click Plan Charging first.";
+    }
+  });
+}
+
+function startMCSAnimation(coords){
+  if(routeVehicle) map.removeLayer(routeVehicle);
+  clearInterval(routeAnimationTimer);
+  const icon=L.divIcon({html:'<div style="font-size:28px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))">🚐</div>',className:'',iconSize:[32,32],iconAnchor:[16,16]});
+  routeVehicle=L.marker(coords[0],{icon,zIndexOffset:5000}).addTo(map);
+  routeVehicle.bindTooltip("MCS-01 • En route",{permanent:false,direction:"top"});
+  let i=0;
+  document.getElementById("mcsResult").innerHTML="<b>🚐 MCS tracking started.</b><br>The MCS marker is moving along the displayed route.";
+  setFlow(6);
+  routeAnimationTimer=setInterval(()=>{
+    i++;
+    if(i>=coords.length){
+      clearInterval(routeAnimationTimer);
+      routeVehicle.setLatLng(coords[coords.length-1]);
+      routeVehicle.bindPopup("🚐 MCS-01 • Arrived at destination ✓").openPopup();
+      document.getElementById("mcsResult").innerHTML="<b>🚐 MCS arrived ✓</b><br>The simulated MCS reached the destination.";
+      return;
+    }
+    routeVehicle.setLatLng(coords[i]);
+  },350);
+}
+
+async function loadState(){
+ const s=await api("/api/state");
+ if(s.lastRoute && !lastRouteForAnimation?.coords){ try { lastRouteForAnimation={...s.lastRoute,coords:(s.lastRoute.geometry?.coordinates||[]).map(c=>[Number(c[1]),Number(c[0])])}; } catch(e){} }
+ renderSimulation(s);
+ document.getElementById("kTraffic").textContent=s.trafficChain.length;
+ document.getElementById("kCoop").textContent=s.cooperationChain.length;
+ document.getElementById("kVerifier").textContent=s.verifiers.filter(v=>v.active).length;
+ document.getElementById("kValid").textContent=s.blockchainValid?"VALID":"CHECK";
+ document.getElementById("kValid").style.color=s.blockchainValid?"var(--green)":"var(--orange)";
+
+ document.getElementById("mcsTable").innerHTML="<tr><th>MCS</th><th>Status</th><th>Energy</th><th>Cost/kWh</th></tr>"+s.participants.mcs.map(m=>`<tr><td>${esc(m.name)}</td><td><span class="pill ${m.status==="idle"?"good":"warn"}">${esc(m.status)}</span></td><td>${m.availableEnergy} kWh</td><td>₹${m.costPerUnit}</td></tr>`).join("");
+ document.getElementById("verifierTable").innerHTML="<tr><th>Verifier</th><th>Trust</th><th>Status</th></tr>"+s.verifiers.map(v=>`<tr><td>${esc(v.name)}</td><td>${v.trustScore}</td><td><span class="pill ${v.active?"good":"bad"}">${v.active?"Active":"Excluded"}</span></td></tr>`).join("");
+ document.getElementById("contributionTable").innerHTML="<tr><th>CS</th><th>Score</th></tr>"+Object.entries(s.contributionValues).map(([id,v])=>`<tr><td>${id}</td><td>${v.toFixed(4)}</td></tr>`).join("");
+ document.getElementById("rewardTable").innerHTML="<tr><th>CS</th><th>Reward</th></tr>"+Object.entries(s.rewards).map(([id,v])=>`<tr><td>${id}</td><td>₹${v.toFixed(2)}</td></tr>`).join("");
+ document.getElementById("trafficBlocks").innerHTML=s.trafficChain.slice().reverse().map(b=>`<div class="block"><b>Block #${b.index}</b> • TXs ${b.transactions.length}<br><span class="hash">Hash ${b.hash}</span><br><span class="hash">Prev ${b.previousHash}</span></div>`).join("");
+ document.getElementById("coopBlocks").innerHTML=s.cooperationChain.slice().reverse().map(b=>`<div class="block"><b>Cooperation Block #${b.index}</b> • TXs ${b.transactions.length}<br><span class="hash">Hash ${b.hash}</span></div>`).join("");
+ document.getElementById("activity").innerHTML=s.lastActivity.map(e=>`<div class="event"><b>${esc(e.type)}</b> ${new Date(e.time).toLocaleTimeString()}<br>${esc(e.message)}</div>`).join("");
+
+ const datasets=s.trustHistory.map(v=>({label:v.name,data:v.values,tension:.3}));
+ const labels=Array.from({length:Math.max(...s.trustHistory.map(v=>v.values.length))},(_,i)=>"Round "+i);
+ if(trustChart)trustChart.destroy();
+ trustChart = new Chart(document.getElementById("trustChart"), {
+  type: "line",
+  data: { labels, datasets },
+  options: {
+    responsive: true,
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: "Round",
+          color: "#e7eef9"
+        }
+      },
+      y: {
+        min: 0,
+        max: 1,
+        title: {
+          display: true,
+          text: "Trust Score",
+          color: "#e7eef9"
+        }
+      }
+    }
+  }
+});
+ document.getElementById("pointsBoard").innerHTML=Object.entries(s.stationPoints||{}).sort((a,b)=>b[1]-a[1]).map(([id,p],i)=>`<div class="point-card"><div style="color:var(--muted);font-size:11px">#${i+1} ${id}</div><div class="score">${p}</div><div style="font-size:10px;color:var(--muted)">cooperation points</div></div>`).join("");
+ document.getElementById("pointsHistory").innerHTML=(s.stationPointHistory||[]).map(x=>`<div class="event"><b>+${x.points} pts</b> ${esc(x.csId)}<br>${esc(x.reason)}<br><span style="color:var(--muted)">Total: ${x.total}</span></div>`).join("") || "<div class='event'>No awards yet.</div>";
+}
+initMap();initSimMap();loadState();runResearch();
+</script>
+</body>
+</html>
